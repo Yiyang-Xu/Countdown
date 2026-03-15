@@ -4,28 +4,50 @@
     "title": "老婆生日",
     "date": "1993-01-23",
     "event_type": "birthday",
+    "time": "00:00:00",
+    "timezone": "Asia/Shanghai",
     "repeat_type": "yearly",
-    "description": "记得提前准备礼物",
+    "quote": null,
+    "description": null,
     "color": null,
-    "pinned": true
+    "pinned": false
   },
   {
     "id": "2",
     "title": "结婚纪念日",
     "date": "2023-08-02",
     "event_type": "anniversary",
+    "time": "00:00:00",
+    "timezone": "America/Los_Angeles",
     "repeat_type": "yearly",
-    "description": "我们的重要日子",
+    "quote": null,
+    "description": null,
     "color": null,
-    "pinned": true
+    "pinned": false
   },
   {
     "id": "3",
     "title": "搬到新城市",
     "date": "2025-04-06",
     "event_type": "countup",
+    "time": "00:00:00",
+    "timezone": "America/New_York",
     "repeat_type": "none",
+    "quote": null,
     "description": "新生活开始",
+    "color": null,
+    "pinned": false
+  },
+  {
+    "id": "13c15e0f-b434-4175-9792-f132155646f9",
+    "title": "Be Together",
+    "date": "2023-07-17",
+    "event_type": "countup",
+    "time": "22:00:00",
+    "timezone": "Asia/Shanghai",
+    "repeat_type": "none",
+    "quote": null,
+    "description": null,
     "color": null,
     "pinned": false
   }
