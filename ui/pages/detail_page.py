@@ -5,6 +5,8 @@ from datetime import datetime
 import streamlit as st
 import streamlit.components.v1 as components
 
+from core.calendar_utils import format_event_date_summary
+
 
 def _format_datetime(value: str) -> str:
     return datetime.fromisoformat(value).strftime("%Y-%m-%d %H:%M:%S")
@@ -30,7 +32,16 @@ def render_detail_page(event_service, event_id: str):
     title_text = html.escape(event.title)
     quote_text = html.escape(quote)
     note_text = html.escape(note)
-    target_meta = html.escape(f"{target_text} · {status_info['timezone']} · {event.event_type.value} · {repeat_label}")
+    date_text = format_event_date_summary(
+        event.date_type,
+        event.date,
+        event.lunar_month,
+        event.lunar_day,
+        event.lunar_is_leap_month,
+    )
+    target_meta = html.escape(
+        f"{date_text} · 下次发生 {target_text} · {status_info['timezone']} · {event.event_type.value} · {repeat_label}"
+    )
 
     st.markdown(f"""
     <div class="detail-page-chrome">

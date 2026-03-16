@@ -1,5 +1,6 @@
 import streamlit as st
 
+from core.calendar_utils import format_event_date_summary
 from ui.components.cards import render_event_card
 
 
@@ -69,7 +70,13 @@ def render_dashboard_page(event_service):
         event = item["event"]
         status_info = item["status_info"]
         stat_value, stat_unit, stat_label = _build_card_display(event, status_info)
-        meta = event.date
+        meta = format_event_date_summary(
+            event.date_type,
+            event.date,
+            event.lunar_month,
+            event.lunar_day,
+            event.lunar_is_leap_month,
+        )
         badge = "Pinned" if event.pinned else event.event_type.value
         tone_class = f"tone-{(index % 6) + 1}"
         with columns[index % column_count]:

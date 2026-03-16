@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from core.calendar_utils import resolve_next_lunar_occurrence
 from core.enums import EventType, RepeatType
 from core.models import Event
 from core.utils import parse_date, parse_datetime, now
@@ -81,9 +82,19 @@ class CountdownService:
             }
 
         if event.repeat_type == RepeatType.YEARLY:
-            next_occurrence = CountdownService._safe_replace_year(base_datetime, current_datetime.year)
-            if next_occurrence < current_datetime:
-                next_occurrence = CountdownService._safe_replace_year(base_datetime, current_datetime.year + 1)
+            if event.date_type.value == "lunar" and event.lunar_month and event.lunar_day:
+                next_occurrence = resolve_next_lunar_occurrence(
+                    lunar_month=event.lunar_month,
+                    lunar_day=event.lunar_day,
+                    is_leap_month=event.lunar_is_leap_month,
+                    current_datetime=current_datetime,
+                    event_time=event.time,
+                    timezone_str=event.timezone,
+                )
+            else:
+                next_occurrence = CountdownService._safe_replace_year(base_datetime, current_datetime.year)
+                if next_occurrence < current_datetime:
+                    next_occurrence = CountdownService._safe_replace_year(base_datetime, current_datetime.year + 1)
 
             days_left = (next_occurrence.date() - current).days
             seconds_left = int((next_occurrence - current_datetime).total_seconds())
