@@ -8,9 +8,9 @@ def render_create_page(event_service, event=None):
     title = "Edit Countdown" if is_edit else "New Countdown"
     eyebrow = "Edit this moment" if is_edit else "Create a moment"
     subtitle = (
-        "回到最初的输入，把这个时刻重新校准。标题、日期、时间与时区都可以改。"
+        "回到最初的输入，把这个时刻重新校准。标题、日期、时间与发生地点都可以改。"
         if is_edit else
-        "用最少的信息，记住一个具体时刻。先写下标题，再确定它发生的日期、时间与时区。"
+        "用最少的信息，记住一个具体时刻。先写下标题，再确定它发生的日期、时间与地点。"
     )
 
     st.markdown(

@@ -14,6 +14,10 @@ class Event:
     date_type: CalendarType = CalendarType.SOLAR
     time: str = "00:00:00"
     timezone: str = DEFAULT_TIMEZONE
+    country_code: Optional[str] = None
+    country_name: Optional[str] = None
+    subdivision_name: Optional[str] = None
+    city_name: Optional[str] = None
     repeat_type: RepeatType = RepeatType.NONE
     lunar_month: Optional[int] = None
     lunar_day: Optional[int] = None
@@ -32,6 +36,9 @@ class Event:
 
     @staticmethod
     def from_dict(data: dict) -> "Event":
+        from core.location_data import infer_location_from_timezone
+
+        location = infer_location_from_timezone(data.get("timezone", DEFAULT_TIMEZONE))
         return Event(
             id=data["id"],
             title=data["title"],
@@ -40,6 +47,10 @@ class Event:
             date_type=CalendarType(data.get("date_type", "solar")),
             time=data.get("time", "00:00:00"),
             timezone=data.get("timezone", DEFAULT_TIMEZONE),
+            country_code=data.get("country_code", location["country_code"]),
+            country_name=data.get("country_name", location["country_name"]),
+            subdivision_name=data.get("subdivision_name", location["subdivision_name"]),
+            city_name=data.get("city_name", location["city_name"]),
             repeat_type=RepeatType(data.get("repeat_type", "none")),
             lunar_month=data.get("lunar_month"),
             lunar_day=data.get("lunar_day"),

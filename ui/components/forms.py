@@ -1,9 +1,7 @@
 from datetime import datetime
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import streamlit as st
 
-from config.settings import DEFAULT_TIMEZONE
 from core.calendar_utils import (
     convert_lunar_to_solar,
     format_lunar_day,
@@ -12,6 +10,12 @@ from core.calendar_utils import (
     solar_to_lunar_parts,
 )
 from core.enums import CalendarType, EventType
+from core.location_data import (
+    get_country_options,
+    get_subdivision_options,
+    infer_location_from_timezone,
+    resolve_location,
+)
 from core.utils import parse_date
 from lunar_python import LunarYear
 
@@ -27,63 +31,6 @@ CALENDAR_TYPE_LABELS = {
     CalendarType.SOLAR: "公历",
     CalendarType.LUNAR: "农历",
 }
-
-TIMEZONE_CITY_OPTIONS = [
-    ("Pacific/Honolulu", "Honolulu"),
-    ("America/Anchorage", "Anchorage"),
-    ("America/Los_Angeles", "Los Angeles"),
-    ("America/Denver", "Denver"),
-    ("America/Chicago", "Chicago"),
-    ("America/New_York", "New York"),
-    ("America/Toronto", "Toronto"),
-    ("America/Sao_Paulo", "Sao Paulo"),
-    ("America/Buenos_Aires", "Buenos Aires"),
-    ("Atlantic/Reykjavik", "Reykjavik"),
-    ("Europe/London", "London"),
-    ("Europe/Paris", "Paris"),
-    ("Europe/Berlin", "Berlin"),
-    ("Europe/Madrid", "Madrid"),
-    ("Europe/Rome", "Rome"),
-    ("Europe/Athens", "Athens"),
-    ("Europe/Helsinki", "Helsinki"),
-    ("Europe/Moscow", "Moscow"),
-    ("Africa/Cairo", "Cairo"),
-    ("Africa/Johannesburg", "Johannesburg"),
-    ("Asia/Dubai", "Dubai"),
-    ("Asia/Karachi", "Karachi"),
-    ("Asia/Kolkata", "New Delhi"),
-    ("Asia/Dhaka", "Dhaka"),
-    ("Asia/Bangkok", "Bangkok"),
-    ("Asia/Shanghai", "Beijing"),
-    ("Asia/Hong_Kong", "Hong Kong"),
-    ("Asia/Singapore", "Singapore"),
-    ("Asia/Tokyo", "Tokyo"),
-    ("Asia/Seoul", "Seoul"),
-    ("Australia/Perth", "Perth"),
-    ("Australia/Sydney", "Sydney"),
-    ("Pacific/Auckland", "Auckland"),
-    ("UTC", "UTC"),
-]
-
-
-def _format_offset(timezone_name: str) -> str:
-    now_in_zone = datetime.now(ZoneInfo(timezone_name))
-    offset = now_in_zone.utcoffset()
-    if offset is None:
-        return "UTC+00:00"
-
-    total_minutes = int(offset.total_seconds() // 60)
-    sign = "+" if total_minutes >= 0 else "-"
-    total_minutes = abs(total_minutes)
-    hours, minutes = divmod(total_minutes, 60)
-    return f"UTC{sign}{hours:02d}:{minutes:02d}"
-
-
-TIMEZONE_LABELS = {
-    timezone_name: f"{city_name} · {_format_offset(timezone_name)} · {timezone_name}"
-    for timezone_name, city_name in TIMEZONE_CITY_OPTIONS
-}
-
 
 def _init_widget_state(key: str, value):
     if key not in st.session_state:
@@ -127,7 +74,17 @@ def render_countdown_form(
     default_date = parse_date(event.date) if is_edit else datetime.now().date()
     default_time = event.time if is_edit else "00:00:00"
     default_hour, default_minute, _ = default_time.split(":")
-    default_timezone = event.timezone if is_edit else DEFAULT_TIMEZONE
+    default_location = (
+        {
+            "country_code": event.country_code or "",
+            "country_name": event.country_name or "",
+            "subdivision_name": event.subdivision_name or "",
+            "city_name": event.city_name or "",
+            "timezone": event.timezone,
+        }
+        if is_edit and event.country_code and event.subdivision_name
+        else infer_location_from_timezone(event.timezone if is_edit else "America/New_York")
+    )
     default_lunar = (
         {
             "year": default_date.year,
@@ -147,7 +104,8 @@ def render_countdown_form(
     lunar_day_key = f"{form_key}_lunar_day"
     hour_key = f"{form_key}_hour"
     minute_key = f"{form_key}_minute"
-    timezone_key = f"{form_key}_timezone"
+    country_key = f"{form_key}_country"
+    subdivision_key = f"{form_key}_subdivision"
 
     _init_widget_state(title_key, default_title)
     _init_widget_state(type_key, default_type)
@@ -169,7 +127,15 @@ def render_countdown_form(
     )
     _init_widget_state(hour_key, default_hour)
     _init_widget_state(minute_key, default_minute)
-    _init_widget_state(timezone_key, default_timezone)
+    _init_widget_state(country_key, default_location["country_code"])
+    _init_widget_state(subdivision_key, default_location["subdivision_name"])
+    try:
+        country_options = get_country_options()
+    except RuntimeError as exc:
+        st.error(str(exc))
+        return
+    country_codes = [country["code"] for country in country_options]
+    country_labels = {country["code"]: country["name"] for country in country_options}
     with st.container():
         st.markdown('<div class="create-form-marker"></div>', unsafe_allow_html=True)
 
@@ -288,7 +254,7 @@ def render_countdown_form(
         st.markdown("""
         <div class="form-section-heading">
             <div class="form-section-kicker">Time</div>
-            <div class="form-section-title">补充时间与时区</div>
+            <div class="form-section-title">补充发生时间</div>
         </div>
         """, unsafe_allow_html=True)
         st.markdown('<div class="field-label">Pick a time</div>', unsafe_allow_html=True)
@@ -308,17 +274,45 @@ def render_countdown_form(
                 label_visibility="collapsed",
             )
 
-        st.markdown('<div class="field-label">Timezone</div>', unsafe_allow_html=True)
-        timezone_values = [timezone_name for timezone_name, _ in TIMEZONE_CITY_OPTIONS]
-        if st.session_state[timezone_key] not in timezone_values:
-            st.session_state[timezone_key] = DEFAULT_TIMEZONE
-        timezone_text = st.selectbox(
-            "Timezone",
-            options=timezone_values,
-            key=timezone_key,
-            format_func=lambda timezone_name: TIMEZONE_LABELS[timezone_name],
-            label_visibility="collapsed",
-        )
+        st.markdown("""
+        <div class="form-section-heading">
+            <div class="form-section-kicker">Location</div>
+            <div class="form-section-title">让地点决定时区，但不把时区展示出来</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.session_state[country_key] not in country_codes:
+            st.session_state[country_key] = (
+                default_location["country_code"]
+                if default_location["country_code"] in country_codes
+                else "US" if "US" in country_codes else country_codes[0]
+            )
+
+        country_col, subdivision_col = st.columns(2, gap="medium")
+        with country_col:
+            st.markdown('<div class="field-label">Country</div>', unsafe_allow_html=True)
+            country_code = st.selectbox(
+                "Country",
+                options=country_codes,
+                key=country_key,
+                format_func=lambda value: country_labels.get(value, value),
+                label_visibility="collapsed",
+            )
+
+        subdivision_options = get_subdivision_options(country_code)
+        subdivision_names = [item["name"] for item in subdivision_options]
+        if st.session_state[subdivision_key] not in subdivision_names:
+            st.session_state[subdivision_key] = subdivision_names[0] if subdivision_names else ""
+
+        subdivision_label = "Province" if country_code == "CN" else "State" if country_code == "US" else "Region"
+        with subdivision_col:
+            st.markdown(f'<div class="field-label">{subdivision_label}</div>', unsafe_allow_html=True)
+            subdivision_name = st.selectbox(
+                subdivision_label,
+                options=subdivision_names,
+                key=subdivision_key,
+                label_visibility="collapsed",
+            )
 
         st.markdown("""
         <div class="form-section-heading">
@@ -345,17 +339,20 @@ def render_countdown_form(
             st.error("Time must use a valid HH:MM:SS value.")
             return
 
-        try:
-            ZoneInfo(timezone_text)
-        except ZoneInfoNotFoundError:
-            st.error("Timezone must be a valid IANA timezone.")
+        resolved_location = resolve_location(country_code, subdivision_name)
+        if not resolved_location:
+            st.error("Please choose a valid country and state/province.")
             return
 
         payload = dict(
             title=title.strip(),
             date=date_value.isoformat() if date_value else None,
             time=normalized_time,
-            timezone=timezone_text,
+            country_code=resolved_location["country_code"],
+            country_name=resolved_location["country_name"],
+            subdivision_name=resolved_location["subdivision_name"],
+            city_name=resolved_location["city_name"],
+            timezone=resolved_location["timezone"],
             event_type=event_type,
             date_type=date_type,
             lunar_year=int(lunar_year) if lunar_year else None,
