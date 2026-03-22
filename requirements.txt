@@ -1,0 +1,4 @@
+lunar_python==1.4.8
+pycountry==24.6.1
+geonamescache==2.0.0
+timezonefinder==6.5.8

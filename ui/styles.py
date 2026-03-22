@@ -134,13 +134,13 @@ def inject_global_styles():
     }
 
     .app-title {
-        font-size: clamp(2.8rem, 4.2vw, 4.6rem);
+        font-size: clamp(3rem, 4.4vw, 4.6rem);
         line-height: 0.95;
-        letter-spacing: -0.06em;
+        letter-spacing: -0.02em;
         font-weight: 800;
         color: var(--heading);
         margin-bottom: 0.8rem;
-        max-width: 7ch;
+        max-width: 8ch;
     }
 
     .app-subtitle {
@@ -200,7 +200,7 @@ def inject_global_styles():
     .section-title {
         font-size: 1.85rem;
         line-height: 1.1;
-        letter-spacing: -0.03em;
+        letter-spacing: 0em;
         font-weight: 800;
         color: var(--heading);
         margin: 0;
@@ -506,7 +506,7 @@ def inject_global_styles():
     }
 
     .create-shell {
-        max-width: 44rem;
+        max-width: 48rem;
         margin: 0 auto 1.2rem;
     }
 
@@ -529,18 +529,19 @@ def inject_global_styles():
 
     .create-subtitle {
         margin: 0;
-        max-width: 38rem;
+        max-width: 42rem;
         color: var(--text-muted);
         font-size: 1rem;
         line-height: 1.8;
     }
 
     .field-label {
-        margin: 0.15rem 0 0.7rem;
-        color: var(--heading);
-        font-size: 1rem;
+        margin: 0.1rem 0 0.48rem;
+        color: rgba(248, 244, 238, 0.78);
+        font-size: 1.5 rem;
         font-weight: 700;
         letter-spacing: -0.01em;
+        text-transform: none;
     }
 
     .field-hint {
@@ -612,6 +613,142 @@ def inject_global_styles():
     .stTextArea label {
         color: var(--text);
         font-weight: 600;
+    }
+
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) {
+        width: min(48rem, 100%);
+        margin: 0 auto;
+    }
+
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) > [data-testid="stVerticalBlockBorderWrapper"] {
+        padding: 1.7rem 1.7rem 1.8rem;
+        border-radius: 32px;
+        border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0)),
+            var(--surface-soft);
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.12);
+    }
+
+    .form-section-heading {
+        margin: 0rem 0 1rem;
+    }
+
+    .form-section-kicker {
+        color: var(--accent);
+        font-size: 1.2rem;
+        font-weight: 800;
+        letter-spacing: 0.05rem;
+        text-transform: uppercase;
+        margin-bottom: 0.1rem;
+    }
+
+    .form-section-title {
+        color: rgba(248, 244, 238, 0.94);
+        font-size: 1.2rem;
+        font-weight: 700;
+        line-height: 1.35;
+        letter-spacing: 0rem;
+    }
+
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .form-section-heading:not(:first-of-type) {
+        margin-top: 1.55rem;
+    }
+
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .field-label {
+        margin: 0.08rem 0 0.42rem;
+    }
+
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stTextInput,
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stDateInput,
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stNumberInput,
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stSelectbox {
+        margin-bottom: 0;
+    }
+
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stTextInput [data-baseweb="base-input"],
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stDateInput [data-baseweb="base-input"],
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stNumberInput [data-baseweb="input"] > div,
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stSelectbox [data-baseweb="select"] > div {
+        min-height: 3rem;
+        padding: 0 1rem;
+        display: flex;
+        align-items: center;
+        box-sizing: border-box;
+    }
+
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stTextInput input,
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stDateInput input,
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stNumberInput input {
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: transparent;
+        font-size: 1.08rem;
+        line-height: 1.2;
+        text-align: center;
+        align-self: center;
+        box-sizing: border-box;
+    }
+
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stTextInput input::placeholder,
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stDateInput input::placeholder {
+        font-size: 1.08rem;
+        line-height: 1.2;
+        text-align: center;
+    }
+
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stSelectbox [data-baseweb="select"] > div > div:first-child {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+    }
+
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stSelectbox [data-baseweb="select"] span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 0;
+        font-size: 1.08rem;
+        line-height: 1.2;
+        text-align: center;
+    }
+
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) [data-testid="stCaptionContainer"] {
+        margin-top: -0.08rem;
+        margin-bottom: 0.8rem;
+        color: rgba(248, 244, 238, 0.54);
+        font-size: 0.84rem;
+        line-height: 1.55;
+        text-align: center;
+    }
+
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .color-placeholder {
+        min-height: 3.2rem;
+        padding: 0 1.05rem;
+        border-radius: 20px;
+    }
+
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stButton {
+        display: flex;
+        justify-content: center;
+        margin-top: 1.35rem;
+    }
+
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stButton > button {
+        min-width: 12rem;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        background: var(--accent);
+        color: #fff9f4;
+        font-weight: 700;
+        padding: 0.62rem 1.1rem;
     }
 
     [data-testid="stForm"] {

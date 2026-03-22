@@ -5,9 +5,14 @@ from datetime import datetime
 import streamlit as st
 import streamlit.components.v1 as components
 
+from core.calendar_utils import format_event_date_summary
+
 
 def _format_datetime(value: str) -> str:
-    return datetime.fromisoformat(value).strftime("%Y-%m-%d %H:%M:%S")
+    parsed = datetime.fromisoformat(value)
+    if parsed.hour == 0 and parsed.minute == 0 and parsed.second == 0:
+        return f"{parsed.year}年{parsed.month}月{parsed.day}日"
+    return f"{parsed.year}年{parsed.month}月{parsed.day}日 {parsed.hour:02d}:{parsed.minute:02d}"
 
 
 def render_detail_page(event_service, event_id: str):
@@ -24,13 +29,33 @@ def render_detail_page(event_service, event_id: str):
     quote = event.quote or "时间并不喧哗，它只是安静地靠近。"
     note = event.description or ""
     target_text = _format_datetime(status_info["target_datetime"])
-    repeat_label = "yearly" if event.repeat_type.value == "yearly" else "once"
+    repeat_label = "每年" if event.repeat_type.value == "yearly" else "单次"
     detail_caption = "正在靠近" if status_info["detail_mode"] == "countdown" else "已经走过"
+    event_type_label = {
+        "birthday": "生日",
+        "anniversary": "纪念日",
+        "countdown": "倒计时",
+        "countup": "正计时",
+    }.get(event.event_type.value, event.event_type.value)
+    moment_label = "下次发生于" if status_info["detail_mode"] == "countdown" else "发生于"
 
     title_text = html.escape(event.title)
     quote_text = html.escape(quote)
     note_text = html.escape(note)
-    target_meta = html.escape(f"{target_text} · {status_info['timezone']} · {event.event_type.value} · {repeat_label}")
+    date_text = format_event_date_summary(
+        event.date_type,
+        event.date,
+        event.lunar_month,
+        event.lunar_day,
+        event.lunar_is_leap_month,
+    )
+    meta_parts = [date_text, f"{moment_label} {target_text}"]
+    if event.subdivision_name:
+        meta_parts.append(event.subdivision_name)
+    elif event.city_name:
+        meta_parts.append(event.city_name)
+    meta_parts.extend([event_type_label, repeat_label])
+    target_meta = html.escape(" · ".join(meta_parts))
 
     st.markdown(f"""
     <div class="detail-page-chrome">
