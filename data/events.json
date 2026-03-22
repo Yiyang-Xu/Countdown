@@ -82,5 +82,26 @@
     "description": null,
     "color": null,
     "pinned": false
+  },
+  {
+    "id": "ff7c8805-4341-47fe-a3e2-c07cd56ca866",
+    "title": "test",
+    "date": "2026-03-21",
+    "event_type": "countup",
+    "date_type": "lunar",
+    "time": "23:59:00",
+    "timezone": "Asia/Shanghai",
+    "country_code": "CN",
+    "country_name": "China",
+    "subdivision_name": "Shanghai",
+    "city_name": "Shanghai",
+    "repeat_type": "none",
+    "lunar_month": 2,
+    "lunar_day": 3,
+    "lunar_is_leap_month": false,
+    "quote": null,
+    "description": null,
+    "color": null,
+    "pinned": false
   }
 ]

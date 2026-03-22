@@ -4,7 +4,7 @@ from typing import List
 from core.calendar_utils import convert_lunar_to_solar, normalize_calendar_type
 from core.enums import CalendarType, EventType, RepeatType
 from core.models import Event
-from core.utils import parse_date
+from core.utils import now, parse_date, parse_datetime
 from services.countdown_service import CountdownService
 
 
@@ -43,6 +43,23 @@ class EventService:
             lunar_day,
             lunar_is_leap_month,
         )
+
+    @staticmethod
+    def _validate_event_temporal_direction(
+        *,
+        event_type,
+        date: str,
+        time: str,
+        timezone: str,
+    ) -> None:
+        target_datetime = parse_datetime(date, time, timezone)
+        current_datetime = now(timezone)
+
+        if event_type == EventType.COUNTUP and target_datetime > current_datetime:
+            raise ValueError("正计时必须选择过去的时间点。")
+
+        if event_type == EventType.COUNTDOWN and target_datetime < current_datetime:
+            raise ValueError("倒计时必须选择未来的时间点。")
 
     def list_events(self) -> List[Event]:
         return self.repo.get_all_events()
@@ -108,6 +125,12 @@ class EventService:
             lunar_day=lunar_day,
             lunar_is_leap_month=lunar_is_leap_month,
         )
+        self._validate_event_temporal_direction(
+            event_type=event_type,
+            date=resolved_date,
+            time=time,
+            timezone=timezone,
+        )
         new_event = Event(
             id=str(uuid.uuid4()),
             title=title,
@@ -168,6 +191,12 @@ class EventService:
             lunar_month=lunar_month,
             lunar_day=lunar_day,
             lunar_is_leap_month=lunar_is_leap_month,
+        )
+        self._validate_event_temporal_direction(
+            event_type=event_type,
+            date=resolved_date,
+            time=time,
+            timezone=timezone,
         )
 
         updated_event = None

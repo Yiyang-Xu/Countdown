@@ -16,7 +16,7 @@ from core.location_data import (
     infer_location_from_timezone,
     resolve_location,
 )
-from core.utils import parse_date
+from core.utils import now, parse_date, parse_datetime
 from lunar_python import LunarYear
 
 
@@ -59,6 +59,40 @@ def _build_lunar_month_options(lunar_year: int | None) -> list[str]:
 def _format_lunar_month_option(value: str) -> str:
     lunar_month, is_leap_month = _parse_month_option(value)
     return format_lunar_month(lunar_month, is_leap_month)
+
+
+def _validate_temporal_direction(
+    *,
+    event_type: EventType,
+    date_value,
+    date_type: CalendarType,
+    lunar_year: int | None,
+    lunar_month: int | None,
+    lunar_day: int | None,
+    lunar_is_leap_month: bool,
+    time_text: str,
+    timezone: str,
+) -> None:
+    if date_type == CalendarType.SOLAR:
+        if date_value is None:
+            raise ValueError("请选择一个公历日期。")
+        resolved_date = date_value
+    else:
+        if lunar_year is None or lunar_month is None or lunar_day is None:
+            raise ValueError("请输入完整的农历年月日。")
+        resolved_date = convert_lunar_to_solar(
+            lunar_year=int(lunar_year),
+            lunar_month=lunar_month,
+            lunar_day=lunar_day,
+            is_leap_month=lunar_is_leap_month,
+        )
+
+    target_datetime = parse_datetime(resolved_date.isoformat(), time_text, timezone)
+    current_datetime = now(timezone)
+    if event_type == EventType.COUNTUP and target_datetime > current_datetime:
+        raise ValueError("正计时必须选择过去的时间点。")
+    if event_type == EventType.COUNTDOWN and target_datetime < current_datetime:
+        raise ValueError("倒计时必须选择未来的时间点。")
 
 
 def render_countdown_form(
@@ -113,7 +147,7 @@ def render_countdown_form(
     _init_widget_state(solar_date_key, default_date)
     _init_widget_state(
         lunar_year_key,
-        int(default_lunar["year"]) if is_edit and default_date_type == CalendarType.LUNAR else None,
+        int(default_lunar["year"]) if default_lunar["year"] else default_date.year,
     )
     _init_widget_state(
         lunar_month_key,
@@ -129,6 +163,10 @@ def render_countdown_form(
     _init_widget_state(minute_key, default_minute)
     _init_widget_state(country_key, default_location["country_code"])
     _init_widget_state(subdivision_key, default_location["subdivision_name"])
+
+    if st.session_state[solar_date_key] is None:
+        st.session_state[solar_date_key] = default_date
+
     try:
         country_options = get_country_options()
     except RuntimeError as exc:
@@ -154,130 +192,7 @@ def render_countdown_form(
 
         st.markdown("""
         <div class="form-section-heading">
-            <div class="form-section-kicker">Date</div>
-        </div>
-        """, unsafe_allow_html=True)
-        type_col, calendar_col = st.columns(2, gap="medium")
-        with type_col:
-            st.markdown('<div class="field-label">Choose a type</div>', unsafe_allow_html=True)
-            event_type = st.selectbox(
-                "Type",
-                options=list(EventType),
-                key=type_key,
-                format_func=lambda x: EVENT_TYPE_LABELS[x],
-                label_visibility="collapsed",
-            )
-        with calendar_col:
-            st.markdown('<div class="field-label">Calendar</div>', unsafe_allow_html=True)
-            date_type = st.selectbox(
-                "Calendar",
-                options=list(CalendarType),
-                key=date_type_key,
-                format_func=lambda x: CALENDAR_TYPE_LABELS[x],
-                label_visibility="collapsed",
-            )
-
-        date_value = None
-        lunar_year = None
-        lunar_month = None
-        lunar_day = None
-        lunar_is_leap_month = False
-
-        if date_type == CalendarType.SOLAR:
-            st.markdown('<div class="field-label">Pick a date</div>', unsafe_allow_html=True)
-            date_value = st.date_input(
-                "Pick a date",
-                key=solar_date_key,
-                label_visibility="collapsed",
-            )
-        else:
-            st.markdown('<div class="field-label">Pick a lunar date</div>', unsafe_allow_html=True)
-
-            year_options = list(range(1900, 2201))
-            lunar_year = st.selectbox(
-                "Lunar year",
-                options=year_options,
-                key=lunar_year_key,
-                index=None if st.session_state[lunar_year_key] is None else year_options.index(st.session_state[lunar_year_key]),
-                placeholder="先选择年份",
-                format_func=lambda value: f"{value}年",
-                label_visibility="collapsed",
-            )
-
-            month_options = _build_lunar_month_options(lunar_year)
-            if st.session_state[lunar_month_key] not in month_options:
-                st.session_state[lunar_month_key] = None
-
-            lunar_month_col, lunar_day_col = st.columns(2, gap="medium")
-            with lunar_month_col:
-                selected_month_option = st.selectbox(
-                    "Lunar month",
-                    options=month_options,
-                    key=lunar_month_key,
-                    index=None if st.session_state[lunar_month_key] is None else month_options.index(st.session_state[lunar_month_key]),
-                    placeholder="先选择月份",
-                    format_func=_format_lunar_month_option,
-                    label_visibility="collapsed",
-                    disabled=lunar_year is None,
-                )
-
-            if selected_month_option is not None:
-                lunar_month, lunar_is_leap_month = _parse_month_option(selected_month_option)
-                day_options = list(range(1, get_lunar_day_count(int(lunar_year), lunar_month, lunar_is_leap_month) + 1))
-            else:
-                day_options = []
-
-            if st.session_state[lunar_day_key] not in day_options:
-                st.session_state[lunar_day_key] = None
-
-            with lunar_day_col:
-                lunar_day = st.selectbox(
-                    "Lunar day",
-                    options=day_options,
-                    key=lunar_day_key,
-                    index=None if st.session_state[lunar_day_key] is None else day_options.index(st.session_state[lunar_day_key]),
-                    placeholder="先选择日期",
-                    format_func=lambda value: format_lunar_day(value),
-                    label_visibility="collapsed",
-                    disabled=selected_month_option is None,
-                )
-
-            if lunar_year is not None and selected_month_option is not None and lunar_day is not None:
-                resolved_solar = convert_lunar_to_solar(
-                    lunar_year=int(lunar_year),
-                    lunar_month=lunar_month,
-                    lunar_day=lunar_day,
-                    is_leap_month=lunar_is_leap_month,
-                )
-                st.caption(f"对应公历日期：{resolved_solar.isoformat()}")
-
-        st.markdown("""
-        <div class="form-section-heading">
-            <div class="form-section-kicker">Time</div>
-            <div class="form-section-title">补充发生时间</div>
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown('<div class="field-label">Pick a time</div>', unsafe_allow_html=True)
-        hour_col, minute_col = st.columns(2, gap="medium")
-        with hour_col:
-            hour_value = st.selectbox(
-                "Hour",
-                options=[f"{hour:02d}" for hour in range(24)],
-                key=hour_key,
-                label_visibility="collapsed",
-            )
-        with minute_col:
-            minute_value = st.selectbox(
-                "Minute",
-                options=[f"{minute:02d}" for minute in range(60)],
-                key=minute_key,
-                label_visibility="collapsed",
-            )
-
-        st.markdown("""
-        <div class="form-section-heading">
             <div class="form-section-kicker">Location</div>
-            <div class="form-section-title">让地点决定时区，但不把时区展示出来</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -314,10 +229,156 @@ def render_countdown_form(
                 label_visibility="collapsed",
             )
 
+        resolved_location = resolve_location(country_code, subdivision_name)
+        selected_timezone = (
+            resolved_location["timezone"]
+            if resolved_location
+            else default_location["timezone"]
+        )
+        today_value = now(selected_timezone).date()
+
+        if st.session_state[type_key] == EventType.COUNTUP and st.session_state[solar_date_key] > today_value:
+            st.session_state[solar_date_key] = today_value
+        if st.session_state[type_key] == EventType.COUNTDOWN and st.session_state[solar_date_key] < today_value:
+            st.session_state[solar_date_key] = today_value
+
+        st.markdown("""
+        <div class="form-section-heading">
+            <div class="form-section-kicker">Date</div>
+        </div>
+        """, unsafe_allow_html=True)
+        type_col, calendar_col = st.columns(2, gap="medium")
+        with type_col:
+            st.markdown('<div class="field-label">Choose a type</div>', unsafe_allow_html=True)
+            event_type = st.selectbox(
+                "Type",
+                options=list(EventType),
+                key=type_key,
+                format_func=lambda x: EVENT_TYPE_LABELS[x],
+                label_visibility="collapsed",
+            )
+        with calendar_col:
+            st.markdown('<div class="field-label">Calendar</div>', unsafe_allow_html=True)
+            date_type = st.selectbox(
+                "Calendar",
+                options=list(CalendarType),
+                key=date_type_key,
+                format_func=lambda x: CALENDAR_TYPE_LABELS[x],
+                label_visibility="collapsed",
+            )
+
+        if event_type == EventType.COUNTUP and st.session_state[solar_date_key] > today_value:
+            st.session_state[solar_date_key] = today_value
+        if event_type == EventType.COUNTDOWN and st.session_state[solar_date_key] < today_value:
+            st.session_state[solar_date_key] = today_value
+
+        date_value = None
+        lunar_year = None
+        lunar_month = None
+        lunar_day = None
+        lunar_is_leap_month = False
+
+        if date_type == CalendarType.SOLAR:
+            st.markdown('<div class="field-label">Pick a date</div>', unsafe_allow_html=True)
+            solar_input_kwargs = {
+                "key": solar_date_key,
+                "label_visibility": "collapsed",
+            }
+            if event_type == EventType.COUNTUP:
+                solar_input_kwargs["max_value"] = today_value
+            elif event_type == EventType.COUNTDOWN:
+                solar_input_kwargs["min_value"] = today_value
+            date_value = st.date_input(
+                "Pick a date",
+                **solar_input_kwargs,
+            )
+        else:
+            st.markdown('<div class="field-label">Pick a lunar date</div>', unsafe_allow_html=True)
+
+            lunar_year = st.number_input(
+                "Lunar year",
+                min_value=1900,
+                max_value=2200,
+                step=1,
+                key=lunar_year_key,
+                label_visibility="collapsed",
+            )
+            lunar_year = int(lunar_year)
+
+            month_options = _build_lunar_month_options(lunar_year)
+            if month_options and st.session_state.get(lunar_month_key) not in month_options:
+                st.session_state[lunar_month_key] = month_options[0]
+            if not month_options:
+                st.session_state[lunar_month_key] = None
+
+            lunar_month_col, lunar_day_col = st.columns(2, gap="medium")
+            with lunar_month_col:
+                selected_month_option = st.selectbox(
+                    "Lunar month",
+                    options=month_options,
+                    key=lunar_month_key,
+                    placeholder="先选择月份",
+                    format_func=_format_lunar_month_option,
+                    label_visibility="collapsed",
+                    disabled=not month_options,
+                )
+
+            if selected_month_option is not None:
+                lunar_month, lunar_is_leap_month = _parse_month_option(selected_month_option)
+                day_options = list(range(1, get_lunar_day_count(int(lunar_year), lunar_month, lunar_is_leap_month) + 1))
+            else:
+                day_options = []
+
+            if day_options and st.session_state.get(lunar_day_key) not in day_options:
+                st.session_state[lunar_day_key] = day_options[0]
+            if not day_options:
+                st.session_state[lunar_day_key] = None
+
+            with lunar_day_col:
+                lunar_day = st.selectbox(
+                    "Lunar day",
+                    options=day_options,
+                    key=lunar_day_key,
+                    placeholder="先选择日期",
+                    format_func=lambda value: format_lunar_day(value),
+                    label_visibility="collapsed",
+                    disabled=not day_options,
+                )
+
+            if lunar_year is not None and selected_month_option is not None and lunar_day is not None:
+                resolved_solar = convert_lunar_to_solar(
+                    lunar_year=int(lunar_year),
+                    lunar_month=lunar_month,
+                    lunar_day=lunar_day,
+                    is_leap_month=lunar_is_leap_month,
+                )
+                st.caption(f"对应公历日期：{resolved_solar.isoformat()}")
+
+        st.markdown("""
+        <div class="form-section-heading">
+            <div class="form-section-kicker">Time</div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown('<div class="field-label">Pick a time</div>', unsafe_allow_html=True)
+        hour_col, minute_col = st.columns(2, gap="medium")
+        with hour_col:
+            hour_value = st.selectbox(
+                "Hour",
+                options=[f"{hour:02d}" for hour in range(24)],
+                key=hour_key,
+                label_visibility="collapsed",
+            )
+        with minute_col:
+            minute_value = st.selectbox(
+                "Minute",
+                options=[f"{minute:02d}" for minute in range(60)],
+                key=minute_key,
+                label_visibility="collapsed",
+            )
+
         st.markdown("""
         <div class="form-section-heading">
             <div class="form-section-kicker">Appearance</div>
-            <div class="form-section-title">预留一点视觉风格</div>
         </div>
         """, unsafe_allow_html=True)
         st.markdown("""
@@ -339,9 +400,24 @@ def render_countdown_form(
             st.error("Time must use a valid HH:MM:SS value.")
             return
 
-        resolved_location = resolve_location(country_code, subdivision_name)
         if not resolved_location:
             st.error("Please choose a valid country and state/province.")
+            return
+
+        try:
+            _validate_temporal_direction(
+                event_type=event_type,
+                date_value=date_value,
+                date_type=date_type,
+                lunar_year=int(lunar_year) if lunar_year else None,
+                lunar_month=lunar_month,
+                lunar_day=lunar_day,
+                lunar_is_leap_month=lunar_is_leap_month,
+                time_text=normalized_time,
+                timezone=resolved_location["timezone"],
+            )
+        except ValueError as exc:
+            st.error(str(exc))
             return
 
         payload = dict(

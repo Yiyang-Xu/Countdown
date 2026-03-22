@@ -661,12 +661,14 @@ def inject_global_styles():
 
     [data-testid="stVerticalBlock"]:has(.create-form-marker) .stTextInput,
     [data-testid="stVerticalBlock"]:has(.create-form-marker) .stDateInput,
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stNumberInput,
     [data-testid="stVerticalBlock"]:has(.create-form-marker) .stSelectbox {
         margin-bottom: 0;
     }
 
     [data-testid="stVerticalBlock"]:has(.create-form-marker) .stTextInput [data-baseweb="base-input"],
     [data-testid="stVerticalBlock"]:has(.create-form-marker) .stDateInput [data-baseweb="base-input"],
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stNumberInput [data-baseweb="input"] > div,
     [data-testid="stVerticalBlock"]:has(.create-form-marker) .stSelectbox [data-baseweb="select"] > div {
         min-height: 3rem;
         padding: 0 1rem;
@@ -676,7 +678,8 @@ def inject_global_styles():
     }
 
     [data-testid="stVerticalBlock"]:has(.create-form-marker) .stTextInput input,
-    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stDateInput input {
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stDateInput input,
+    [data-testid="stVerticalBlock"]:has(.create-form-marker) .stNumberInput input {
         width: 100%;
         height: auto;
         min-height: 0;
